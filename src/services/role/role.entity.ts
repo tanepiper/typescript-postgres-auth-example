@@ -1,7 +1,10 @@
-import { Column, Entity, PrimaryColumn, OneToMany, ManyToMany } from "typeorm";
+import { Column, Entity, Index, PrimaryColumn, OneToMany, ManyToMany, JoinTable } from "typeorm";
 import { Permission } from "../permission/permission.entity";
 import { User } from "../user/user.entity";
 
+/**
+ * Data object with annotations to configure database in ORM
+ */
 @Entity()
 export class Role {
 
@@ -11,12 +14,13 @@ export class Role {
   @Column()
   public description: string;
 
-  @OneToMany(type => Permission, permission => permission.role, {
-    cascade: true
+  @OneToMany((type) => Permission, (permission) => permission.role, {
+    cascade: true,
   })
-  permissions: Permission[];
+  public permissions: Permission[];
 
-  @ManyToMany(type => User, user => user.roles)
-  users: User[];
+  @ManyToMany((type) => User, (user) => user.roles)
+  @JoinTable()
+  public users: User[];
 
 }

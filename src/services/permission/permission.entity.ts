@@ -1,6 +1,9 @@
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne } from "typeorm";
+import { Column, Entity, Index, PrimaryGeneratedColumn, ManyToOne, Unique } from "typeorm";
 import { Role } from "../role/role.entity";
 
+/**
+ * Data object with annotations to configure database in ORM
+ */
 @Entity()
 export class Permission {
 
@@ -16,7 +19,9 @@ export class Permission {
   @Column()
   public attributes: string;
 
-  @ManyToOne(type => Role, role => role.permissions)
-  role: Role
+  @ManyToOne((type) => Role, (role) => role.permissions, {
+    onDelete: "CASCADE",
+  })
+  public role: Role;
 
 }

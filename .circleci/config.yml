@@ -1,0 +1,48 @@
+# Javascript Node CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-javascript/ for more details
+#
+version: 2
+jobs:
+  build:
+    working_directory: ~/repo
+
+    docker:
+      # specify the version you desire here
+      - image: circleci/node:10
+
+      - image: circleci/redis:alpine
+
+      - image: circleci/postgres:latest
+        environment:
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: admin
+          POSTGRES_DB: auth_example
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "package.json" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run: npm install
+
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-dependencies-{{ checksum "package.json" }}
+
+      # run tests!
+      - run: printenv
+      - run: npm run lint && npm run test
+
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - build:
+          context: auth-example-app

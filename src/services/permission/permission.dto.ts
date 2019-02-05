@@ -1,6 +1,13 @@
-import { IsString, IsNumber } from 'class-validator';
+import { IsString, IsNumber, IsDefined, IsOptional } from "class-validator";
 
+/**
+ * Data transfer object (DTO) with expected fields for creating permissions
+ */
 class CreatePermissionDto {
+
+  @IsString()
+  @IsOptional()
+  public role: string;
 
   @IsString()
   public resource: string;
@@ -9,6 +16,7 @@ class CreatePermissionDto {
   public action: string;
 
   @IsString()
+  @IsDefined()
   public attributes: string;
 
 }

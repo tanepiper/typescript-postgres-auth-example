@@ -1,3 +1,6 @@
+/**
+ * Standard logger (to console for 12factor)
+ */
 import winston from "winston";
 
 const { createLogger, format, transports } = winston;
@@ -15,7 +18,7 @@ const prodFormat = () => {
     value instanceof Error ? replaceError(value) : value;
 
   return combine(format.json({ replacer }));
-}
+};
 
 const devFormat = () => {
   const formatMessage = (info: any) => `${info.level} ${info.message}`;
@@ -25,12 +28,12 @@ const devFormat = () => {
   const fmt = (info: any) =>
     info instanceof Error ? formatError(info) : formatMessage(info);
   return combine(colorize(), printf(fmt));
-}
+};
 
 const logger = createLogger({
   exitOnError: false,
   format: process.env.NODE_ENV === "production" ? prodFormat() : devFormat(),
-  level: "error",
+  level: "info",
   transports: [
     new transports.Console(),
     // new winston.transports.File({ filename: "errors.log" }),

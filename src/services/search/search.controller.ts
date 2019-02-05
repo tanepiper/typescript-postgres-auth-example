@@ -1,28 +1,32 @@
-import { NextFunction, Request, Response, Router } from "express";
-import { getPlaces } from "./provider/OpenCageDataProvider";
-import Controller from '../../interfaces/controller.interface';
+import { NextFunction, Response, Router } from "express";
+import Controller from "../../interfaces/controller.interface";
+import RequestWithUser from "../../interfaces/request.interface";
+import authenticationMiddleware from "../../middleware/authentication.middleware";
+import validationMiddleware from "../../middleware/validation.middleware";
 
+import SearchDao from "./search.dao";
+
+/**
+ * Example external API interaction searching geo service
+ */
 class SearchController implements Controller {
   public path: string = "/search";
   public router: Router = Router();
-  
+  private searchDao: SearchDao = new SearchDao();
+
   constructor() {
-    this.router.get(this.path, this.getPlacesByName);
+    // TODO: figure out Dto pattern for querystrings for validation (q length > 3)
+    this.router.get(this.path, authenticationMiddleware, this.getPlacesByName);
   }
 
-  private getPlacesByName = async (request: Request, response: Response, next: NextFunction) => {
+  private getPlacesByName = async (request: RequestWithUser, response: Response, next: NextFunction) => {
     const { q } = request.query;
 
-    let places: {[key: string]: any};
-    if (q.length < 3) {
-      places = {
-        features: [],
-        type: "FeatureCollection",
-      };
+    try {
+      response.send(await this.searchDao.getPlacesByName(request.user, q));
+    } catch (error) {
+      next(error);
     }
-  
-    places = await getPlaces(q);
-    response.send(places);
   }
 }
 

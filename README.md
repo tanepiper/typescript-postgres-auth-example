@@ -1,36 +1,62 @@
 [![CircleCI](https://circleci.com/gh/mikesparr/typescript-postgres-auth-example.svg?style=svg)](https://circleci.com/gh/mikesparr/typescript-postgres-auth-example)
 
-# Typescript Postgres Auth Example
-This project was created more for research purposes, reviewing how various other
+# Full-featured Starter API (Typescript, Express, RBAC / ABAC)
+This project was created initially for research purposes, reviewing how various other
 apps organize their Node/Express/Typescript repos and trying to pick the best 
-parts of each. Also, I wanted to figure out how best to combine Postgres, Redis, 
-JWT (or other token solution), and RBAC/ABAC authorization. This will be a "playground" 
-of sorts until I am comfortable with some of the tech decisions, but public so I can 
-gather input from peers.
+parts of each. It is now a reference / starter API project any startup could use to
+start off on the right foot with key functionality needed for future scaling and support.
 
-# Usage (for testing purposes)
+## Features included
+ * Authentication (register, login, verify email, lost password, login as (assume identity))
+ * Authorization (role-based access control with attribute filtering)
+ * Features flags (flags, multi-variant flags, user segments, environments, goal tracking)
+ * Event logging (logs activity stream of user events, search and filter log records)
+ * Performance monitoring (logging process time per request to identify bottlenecks)
+ * Security (token deny list, helmet, more to come...)
+ * Email using Sendgrid transactional email
+ * Docker Compose (rapid setup including database admin tools)
+ * Database integrations (Postgres, Redis, Elasticsearch)
+ * Containers (optionally build app in Docker container with multi-stage build)
+ * Continuous Integration (CI config builds, lints, tests on push with CircleCI)
+ * Flexible architecture (Dao layer allows adding future "views", EventEmitter allows CQRS-ES)
+ * Strongly-typed codebase (written in Typescript)
+ * Interactive API documentation using Swagger UI (Open API spec)
+ * Automated testing (including integration tests for API routes)
+
+## Planned features
+ * User groups support (authorization based on membership roles)
+ * User invite support
+ * Internationalization
+ * Additional view layers (i.e. GraphQL)
+ * Graph relations
+ * Workspaces
+
+# Usage (quick start)
  1. clone the repo
  2. `npm install`
  3. Setup temp environment configs (TEST only)
     * RUN in CLI from project root `./setenv.test.sh`
  4. Make note of generated files and change to your preferences
     * IMPORTANT: when deploying app, don't use the `.env` file, simply set vars in your CI provider or container manager
- 5. `docker-compose up` (may need to edit the paths or permissions on your computer)
- This will spin up Postgres, PGAdmin, and Redis
- 6. Run tests (will create test data)
+ 5. `docker-compose up`
+    * This will spin up Postgres, PGAdmin, Elasticsearch, Kibana, and Redis
+    * IMPORTANT: run `./setup_es.sh` to create index mapping templates for Elasticsearch after startup
+    * To stop them, and remove local volumes: `docker-compose down -v`
+ 6. Run tests (will load up test data in tables)
     * `npm run test`
  7. Start up app in developer mode (will watch and recompile for changes)
     * `npm run dev`
- 8. Open another browser tab to [Swagger UI Explorer](http://localhost:3000/api-docs) to explore API
+ 8. Open browser tab to [Swagger UI Explorer](http://localhost:3000/api-docs) to explore API
  9. Open browser tab to [Postgres Admin](http://localhost:8080/browser) for Postgres Admin
-    * click on "Servers" and then "Object > Create > Server"
-    * "General > Name" the connection "Test Server"
-    * click on "Connection" tab:
-      * Host: `postgres` (network exposed by docker-compose)
-      * Maintenance database: `auth_example` (or whatever you set in ENV vars)
-      * Password: `admin` (or whatever you set in ENV vars)
-    * click on "Save"
-    * traverse "Servers > Test Server > Databases > auth_example > Schemas > public"
+     * click on "Servers" and then "Object > Create > Server"
+     * "General > Name" the connection "Test Server"
+     * click on "Connection" tab:
+       * Host: `postgres` (network exposed by docker-compose)
+       * Password: `admin` (or whatever you set in ENV vars)
+     * click on "Save"
+     * traverse "Servers > Test Server > Databases > auth_example > Schemas > public"
+ 10. Open browser tab to [Kibana](http://localhost:5601) for Elasticsearch Admin
+     * You will have to know a little about ES if you choose to use it
 
 # Testing
 This app includes automated tests using **Supertest** and **Jest** to test routes, etc.
@@ -123,24 +149,10 @@ as much as possible so we could change out solutions in future without modifying
  * As an `architect`, I want to app to be able to run in containers, so it is isolated and can easily scale to meet growth requirements
  * As an `architect`, I want to be able to change password hash solutions, so we can stay current as security standards evolve
  * As an `architect`, I want to be able to plug in security middleware, so we can stay current as security standards evolve
+ * As an `architect`, I want to log performance metrics, so I can eliminate bottlenecks or calculate resource needs for scaling
 
 ### Developer
  * As a `developer`, I want to be able to toggle/flag new functionality, so we can safely build/deploy and test out new features
-
-# TODO
-## Add support for group permissions
-One could extend the functionality to add **group** or **department** (team) access as well. By making a `user`
-a member of a **group** and then adding author or group *ownership* to records, you can extend the Controller logic
-to `isOwnerOrMember` to check the records accordingly.
-
- * Example from AccessControl module author: https://github.com/onury/accesscontrol/issues/39
-
-## Add support for other API views (i.e. GraphQL)
-Some of the database interaction via ORM in Controllers could be factored out to a lib/model object for each 
-service so the Controller just calls methods. This way if we added a GraphQL service the resolvers could reuse the 
-same methods to keep the app DRY.
- * UPDATE 1/27/19: I factored controller logic to DAO layer so they could be reused by GraphQL resolvers
- * Time permitting, I may add GraphQL Schema/Resolvers and interface as well so this is multi-purpose API
 
 # Resources
  * [Methodology: 12-factor](https://12factor.net/)
@@ -162,6 +174,8 @@ same methods to keep the app DRY.
  * [Testing: Docker Compose](https://docs.docker.com/compose/)
  * [Testing: Postgres Admin](https://www.pgadmin.org/)
  * [Testing: Redis CLI](https://redis.io/topics/rediscli)
+ * [Formatting: MomentJS](https://www.npmjs.com/package/moment)
+ * [Formatting: Google Phonelib](https://www.npmjs.com/package/google-libphonenumber)
 
 # Inspiration / Credits
 As I wanted to piece together RBAC/ABAC using popular stack choices, I found several good examples online. I'd 

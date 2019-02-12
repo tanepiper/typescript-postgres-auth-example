@@ -27,8 +27,8 @@ import Email from "../email/email";
 import UserEmailDto from "./email.dto";
 import UserLoginDto from "./login.dto";
 import CreateUserDto from "../../services/user/user.dto";
-import { Role } from "../../services/role/role.entity";
-import { User } from "../../services/user/user.entity";
+import { Role } from "../user/role.entity";
+import { User } from "../user/user.entity";
 import AuthenticationTokenExpiredException from "../../exceptions/AuthenticationTokenExpiredException";
 import WrongAuthenticationTokenException from "../../exceptions/WrongAuthenticationTokenException";
 import RecordNotFoundException from "../../exceptions/RecordNotFoundException";
@@ -57,12 +57,14 @@ class AuthenticationDao implements Dao {
   }
 
   public login = async (loginData: UserLoginDto, userAgent: object): Promise<object | Error> => {
+    const started: number = Date.now();
+
     const user: User = await this.userRepository.findOne({ email: loginData.email }, { relations: ["roles"] });
     if (user) {
       const isPasswordMatching = await verifyPassword(loginData.password, user.password);
       if (isPasswordMatching) {
         user.password = undefined;
-        return this.logUserIn(user, userAgent);
+        return await this.logUserIn(user, userAgent, started);
       } else {
         throw new WrongCredentialsException();
       }
@@ -73,19 +75,22 @@ class AuthenticationDao implements Dao {
 
   public impersonate = async (
           user: User,
-          surrogateUserId: string | number,
+          surrogateUserId: string,
           userAgent: object): Promise<object | Error> => {
-    const foundUser: User = await this.userRepository.findOne(surrogateUserId, { relations: ["roles"] });
+    const started: number = Date.now();
+
+    const foundUser: User = await this.userRepository.findOne(surrogateUserId);
     if (foundUser) {
       const isOwnerOrMember: boolean = false; // TODO: consider logic if manager in group
       const action: string = methodActions.POST;
       const permission: AuthPermission = await getPermission(user, isOwnerOrMember, action, this.surrogateResource);
 
       if (permission.granted) {
-        foundUser.password = undefined;
         foundUser.surrogateEnabled = true;
         foundUser.surrogatePrincipal = user;
-        return this.logUserIn(foundUser, userAgent);
+        const loginUser: User = permission.filter(foundUser);
+
+        return await this.logUserIn(loginUser, userAgent, started);
       } else {
         throw new UserNotAuthorizedException(user.id, action, this.surrogateResource);
       }
@@ -95,6 +100,7 @@ class AuthenticationDao implements Dao {
   }
 
   public logout = async (user: User, token: string): Promise<object | Error> => {
+    const started: number = Date.now();
     const isOwnerOrMember: boolean = false;
     const action: string = methodActions.PUT;
     const permission: AuthPermission = await getPermission(user, isOwnerOrMember, action, this.resource);
@@ -104,12 +110,14 @@ class AuthenticationDao implements Dao {
       const success = await removeTokenFromCache(token);
 
       // log event to central handler
+      const ended: number = Date.now();
       event.emit("logout", {
         action,
         actor: user,
         object: null,
         resource: this.resource,
-        timestamp: Date.now(),
+        timestamp: ended,
+        took: ended - started,
         verb: "logout",
       });
 
@@ -121,6 +129,8 @@ class AuthenticationDao implements Dao {
   }
 
   public register = async (userData: CreateUserDto, userAgent: object): Promise<User | Error> => {
+    const started: number = Date.now();
+
     if (
       await this.userRepository.findOne({ email: userData.email })
     ) {
@@ -137,12 +147,14 @@ class AuthenticationDao implements Dao {
       await this.userRepository.save(user);
 
       // log event to central handler
+      const ended: number = Date.now();
       event.emit("register", {
         action: "create",
         actor: user,
         object: user,
         resource: this.resource,
-        timestamp: Date.now(),
+        timestamp: ended,
+        took: ended - started,
         verb: "register",
       }); // before password removed in case need to store in another DB
 
@@ -156,6 +168,8 @@ class AuthenticationDao implements Dao {
   }
 
   public verifyToken = async (token: string, userAgent: object): Promise<object | Error> => {
+    const started: number = Date.now();
+
     if (! await isTokenInDenyList(token)) {
       try {
         const tokenResult: any = await readToken(token);
@@ -180,12 +194,14 @@ class AuthenticationDao implements Dao {
           }
 
           // log event to central handler
+          const ended: number = Date.now();
           event.emit("verify", {
             action: "update",
             actor: foundUser,
-            object: foundUser,
+            object: token,
             resource: this.resource,
-            timestamp: Date.now(),
+            timestamp: ended,
+            took: ended - started,
             verb: "verify",
           });
 
@@ -193,7 +209,7 @@ class AuthenticationDao implements Dao {
           await addTokenToDenyList(token);
           await removeTokenFromCache(token);
 
-          return this.logUserIn(foundUser, userAgent);
+          return this.logUserIn(foundUser, userAgent, started);
         }
       } catch (error) {
         // first check if token previously existed, and user in database
@@ -213,16 +229,19 @@ class AuthenticationDao implements Dao {
   }
 
   public lostPassword = async (userData: UserEmailDto, userAgent: object): Promise<object | Error> => {
+    const started: number = Date.now();
     const foundUser = await this.userRepository.findOne({ email: userData.email });
 
     if (foundUser) {
       // log event to central handler
+      const ended: number = Date.now();
       event.emit("lost-password", {
         action: "create",
         actor: foundUser,
-        object: foundUser,
+        object: {id: foundUser.id},
         resource: this.resource,
-        timestamp: Date.now(),
+        timestamp: ended,
+        took: ended - started,
         verb: "lost-password",
       });
 
@@ -239,6 +258,7 @@ class AuthenticationDao implements Dao {
 
   public removeToken = async (user: User, id: string):
             Promise<boolean | RecordNotFoundException | UserNotAuthorizedException> => {
+    const started: number = Date.now();
     const recordToRemove = await decodeToken(id);
 
     const isOwnerOrMember: boolean = String(user.id) === String(recordToRemove.id);
@@ -250,12 +270,14 @@ class AuthenticationDao implements Dao {
         await removeTokenFromCache(id);
 
         // log event to central handler
+        const ended: number = Date.now();
         event.emit("remove-token", {
           action,
           actor: user,
           object: id,
           resource: this.tokenResource,
-          timestamp: Date.now(),
+          timestamp: ended,
+          took: ended - started,
           verb: "remove-token",
         });
 
@@ -276,7 +298,7 @@ class AuthenticationDao implements Dao {
             Promise<NotImplementedException> => {
     throw new NotImplementedException("getAll");
   }
-  public getOne = async (user: User, id: string | number):
+  public getOne = async (user: User, id: string):
             Promise<NotImplementedException> => {
     throw new NotImplementedException("getOne");
   }
@@ -284,7 +306,7 @@ class AuthenticationDao implements Dao {
             Promise<NotImplementedException> => {
     throw new NotImplementedException("save");
   }
-  public remove = async (user: User, id: string | number):
+  public remove = async (user: User, id: string):
             Promise<NotImplementedException> => {
     throw new NotImplementedException("remove");
   }
@@ -298,18 +320,21 @@ class AuthenticationDao implements Dao {
    *
    * @param user
    */
-  private logUserIn = async (user: User, userAgent: object): Promise<{[key: string]: any}> => {
+  private logUserIn = async (user: User, userAgent: object, started: number): Promise<{[key: string]: any}> => {
     const tokenData = await createUserToken(user, userAgent);
 
     const isSurrogate: boolean = (user.surrogateEnabled && user.surrogatePrincipal) ? true : false;
 
     // log event to central handler
+    // TODO: check if need tertiary logic for actor
+    const ended: number = Date.now();
     event.emit(isSurrogate ? "impersonate" : "login", {
       action: "create",
       actor: user.surrogatePrincipal,
       object: user,
       resource: isSurrogate ? this.surrogateResource : this.resource,
-      timestamp: Date.now(),
+      timestamp: ended,
+      took: ended - started,
       verb: isSurrogate ? "impersonate" : "login",
     });
 
@@ -329,18 +354,21 @@ class AuthenticationDao implements Dao {
    */
   private reissueFromExpiredToken = async (token: string): Promise<void> => {
     try {
+      const started: number = Date.now();
       const tokenResult: any = await decodeToken(token);
 
       const foundUser: User = await this.userRepository.findOne({ email: tokenResult.email });
 
       if (foundUser) {
         // log event to central handler
+        const ended: number = Date.now();
         event.emit("reissue", {
           action: "create",
           actor: foundUser,
           object: foundUser,
           resource: this.resource,
-          timestamp: Date.now(),
+          timestamp: ended,
+          took: ended - started,
           verb: "reissue",
         }); // before password removed in case need to store in another DB
 

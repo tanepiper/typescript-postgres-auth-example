@@ -2,11 +2,11 @@
  * Use within 'connection' block in server to create test data
  */
 import { Connection } from "typeorm";
-import { Permission } from "../services/permission/permission.entity";
-import { Role } from "../services/role/role.entity";
+import { Permission } from "../services/user/permission.entity";
+import { Role } from "../services/user/role.entity";
 import { User } from "../services/user/user.entity";
-import { Goal } from "../services/goal/goal.entity";
-import { Segment } from "../services/segment/segment.entity";
+import { Goal } from "../services/flag/goal.entity";
+import { Segment } from "../services/flag/segment.entity";
 import { Flag } from "../services/flag/flag.entity";
 import { hashPassword } from "../utils/authentication.helper";
 import logger from "./logger";
@@ -51,8 +51,32 @@ const createTestData = async (connection: Connection) => {
   // surrogate "login as user"
   const adminSurrogate = connection.manager.create(Permission, {
     action: "create:any",
-    attributes: "*, !password, !surrogatePrincipal.password",
+    attributes: "*, !password, !ip, !surrogatePrincipal.ip, !surrogatePrincipal.password",
     resource: "surrogate",
+  });
+
+  // events
+  const adminEventViewPermission = connection.manager.create(Permission, {
+    action: "read:any",
+    attributes: "*, !actor.password, !actor.surrogatePrincipal.password",
+    resource: "event",
+  });
+
+  // graph
+  const adminRelationViewPermission = connection.manager.create(Permission, {
+    action: "read:any",
+    attributes: "*",
+    resource: "relation",
+  });
+  const adminRelationCreatePermission = connection.manager.create(Permission, {
+    action: "create:any",
+    attributes: "*",
+    resource: "relation",
+  });
+  const adminRelationDeletePermission = connection.manager.create(Permission, {
+    action: "delete:any",
+    attributes: "*",
+    resource: "relation",
   });
 
   // user
@@ -294,6 +318,7 @@ const createTestData = async (connection: Connection) => {
     id: "admin",
     permissions: [
       adminSurrogate,
+      adminEventViewPermission,
       adminUserViewPermission,
       adminUserViewTokens,
       adminUserUpdateTokens,
@@ -327,6 +352,9 @@ const createTestData = async (connection: Connection) => {
       adminRoleViewRolePermissions,
       adminRoleAddRolePermission,
       adminRoleDeleteRolePermission,
+      adminRelationViewPermission,
+      adminRelationCreatePermission,
+      adminRelationDeletePermission,
     ],
   });
   const sysadminRole = connection.manager.create(Role, {

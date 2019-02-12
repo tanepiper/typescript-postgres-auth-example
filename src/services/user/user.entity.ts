@@ -1,5 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToMany } from "typeorm";
-import { Role } from "../role/role.entity";
+import { Role } from "./role.entity";
 
 /**
  * Data object with annotations to configure database in ORM
@@ -7,8 +7,8 @@ import { Role } from "../role/role.entity";
 @Entity()
 export class User {
 
-  @PrimaryGeneratedColumn()
-  public id: number;
+  @PrimaryGeneratedColumn("uuid")
+  public id: string;
 
   @Column()
   public firstName: string;

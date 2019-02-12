@@ -4,6 +4,7 @@ import logger from "../../config/logger";
 import NotImplementedException from "../../exceptions/NotImplementedException";
 import RecordNotFoundException from "../../exceptions/RecordNotFoundException";
 import Dao from "../../interfaces/dao.interface";
+import SearchResult from "../../interfaces/searchresult.interface";
 import RecordsNotFoundException from "../../exceptions/RecordsNotFoundException";
 import UserNotAuthorizedException from "../../exceptions/UserNotAuthorizedException";
 
@@ -22,7 +23,9 @@ class SearchDao implements Dao {
     // nothing
   }
 
-  public getPlacesByName = async (user: User, query: string) => {
+  public getPlacesByName = async (user: User, query: string):
+          Promise<SearchResult> => {
+    const started: number = Date.now();
 
     const isOwnerOrMember: boolean = false;
     const action: string = methodActions.GET;
@@ -35,16 +38,22 @@ class SearchDao implements Dao {
         throw new RecordsNotFoundException(this.resource);
       } else {
         // log event to central handler
+        const ended: number = Date.now();
         event.emit("search", {
           action,
           actor: user,
-          object: records,
+          object: null,
           resource: this.resource,
-          timestamp: Date.now(),
+          timestamp: ended,
+          took: ended - started,
           verb: "search",
         });
 
-        return permission.filter(records);
+        return {
+          data: permission.filter(records),
+          length: records.length,
+          total: records.length,
+        };
       }
     } else {
       throw new UserNotAuthorizedException(user.id, action, this.resource);
@@ -59,7 +68,7 @@ class SearchDao implements Dao {
     throw new NotImplementedException("getAll");
   }
 
-  public getOne = async (user: User, id: string | number):
+  public getOne = async (user: User, id: string):
             Promise<NotImplementedException> => {
     throw new NotImplementedException("getOne");
   }
@@ -69,7 +78,7 @@ class SearchDao implements Dao {
     throw new NotImplementedException("save");
   }
 
-  public remove = async (user: User, id: string | number):
+  public remove = async (user: User, id: string):
             Promise<NotImplementedException> => {
     throw new NotImplementedException("remove");
   }

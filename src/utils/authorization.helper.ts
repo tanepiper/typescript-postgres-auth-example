@@ -7,14 +7,14 @@ import cache from "../config/cache"; // Redis commands
 import logger from "../config/logger";
 import { getRepository, Repository } from "typeorm";
 import { User } from "../services/user/user.entity";
-import { Role } from "../services/role/role.entity";
-import { Permission } from "../services/permission/permission.entity";
+import { Role } from "../services/user/role.entity";
+import { Permission } from "../services/user/permission.entity";
 
 /**
  * Keys for cache
  */
 const AUTHORIZATION_GRANTS_KEY = "authorization:grants";
-const USER_ROLES_KEY = (userId: number | string) => `user:${userId}:roles`;
+const USER_ROLES_KEY = (userId: string) => `user:${userId}:roles`;
 
 /**
  * Action types for deciding which query method to execute

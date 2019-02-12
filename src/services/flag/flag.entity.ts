@@ -1,6 +1,6 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn, JoinTable, ManyToMany } from "typeorm";
-import { Goal } from "../goal/goal.entity";
-import { Segment } from "../segment/segment.entity";
+import { Goal } from "./goal.entity";
+import { Segment } from "./segment.entity";
 import { Environment, EnvironmentType } from "../../interfaces/environment.interface";
 import Variant from "../../interfaces/variant.interface";
 
@@ -15,8 +15,8 @@ export enum FlagType {
 @Entity()
 export class Flag {
 
-  @PrimaryGeneratedColumn()
-  public id: number;
+  @PrimaryGeneratedColumn("uuid")
+  public id: string;
 
   @Column()
   public key: string;
